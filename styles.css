@@ -444,6 +444,34 @@ body {
     font-style: italic;
 }
 
+/* Share Screen specific tweaks */
+#share-screen .content-center {
+    padding: 30px 20px;
+}
+
+#share-preview {
+    border: 8px solid white;
+    background: white;
+}
+
+/* Make download button look secondary but nice */
+#download-btn {
+    background: #ffeef1;
+    color: #ff6b9d;
+    border: 2px solid #ff8fab;
+}
+
+#download-btn:hover {
+    background: #ffd1dc;
+    transform: scale(1.05);
+}
+
+/* Celebration screen share button hover */
+#share-our-moment-btn:hover {
+    transform: scale(1.08);
+    box-shadow: 0 15px 40px rgba(255, 107, 157, 0.5);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .title {

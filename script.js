@@ -371,14 +371,53 @@ function moveNoButton() {
     }
 }
 
+// ────────────────────────────────────────────────
+// SHARE FEATURE
+const shareImageUrl = 'assets/yes-card.png'; // ← change this to your actual image path
+
+async function tryShareImage() {
+    try {
+        const response = await fetch(shareImageUrl);
+        if (!response.ok) throw new Error('Image not found');
+
+        const blob = await response.blob();
+        const file = new File([blob], 'Diya-Said-Yes-2026.png', { type: 'image/png' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: 'She Said YES! 💍',
+                text: 'Happy Valentine’s Day 2026 – to forever with Diya 💕'
+            });
+            // Success — usually opens share sheet (Instagram often appears)
+        } else {
+            throw new Error('Web Share API not supported for files');
+        }
+    } catch (err) {
+        console.error('Share failed:', err);
+        // Fallback: trigger download
+        downloadImage();
+        alert("Couldn't open direct share.\n\nImage downloaded! Open Instagram → Story → Gallery.");
+    }
+}
+
+function downloadImage() {
+    const link = document.createElement('a');
+    link.href = shareImageUrl;
+    link.download = 'Diya-Said-Yes-2026.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Celebration → go to share screen
 function celebrate() {
     stopBackgroundMusic();
     showScreen('celebration-screen');
-    
+
     // Epic confetti
     const duration = 5 * 1000;
     const end = Date.now() + duration;
-
     const colors = ['#ff6b9d', '#ff8fab', '#ffc0cb', '#ff1493', '#ff69b4'];
 
     (function frame() {
@@ -397,12 +436,9 @@ function celebrate() {
             colors: colors
         });
 
-        if (Date.now() < end) {
-            requestAnimationFrame(frame);
-        }
-    }());
-    
-    // Heart explosion
+        if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+
     setTimeout(() => {
         confetti({
             particleCount: 100,
@@ -412,7 +448,22 @@ function celebrate() {
             colors: colors
         });
     }, 500);
+
+    // Auto-transition to share screen after celebration
+    setTimeout(() => {
+        showScreen('share-screen');
+    }, 6500);
+
+    // Optional: manual button on celebration screen
+    document.getElementById('share-our-moment-btn').onclick = () => {
+        showScreen('share-screen');
+    };
 }
+
+// ────────────────────────────────────────────────
+// Wire up share screen buttons
+document.getElementById('share-to-insta-btn')?.addEventListener('click', tryShareImage);
+document.getElementById('download-btn')?.addEventListener('click', downloadImage);
 
 // Initialize everything when page loads
 window.addEventListener('load', () => {
