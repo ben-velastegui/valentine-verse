@@ -6,8 +6,30 @@ let gameState = {
 };
 
 // Background music
-const bgMusic = document.getElementById('background-music');
+let bgMusic;
 let musicStarted = false;
+
+// Initialize music when DOM is ready
+function initMusic() {
+    bgMusic = document.getElementById('background-music');
+    if (bgMusic) {
+        console.log('Music element found');
+        bgMusic.volume = 0.3; // Set to 30% volume
+        bgMusic.loop = true;
+        
+        // Test if music file exists
+        bgMusic.addEventListener('error', () => {
+            console.log('Music file not found - app will work without music');
+            bgMusic = null; // Disable music if file doesn't exist
+        });
+        
+        bgMusic.addEventListener('canplaythrough', () => {
+            console.log('Music file loaded successfully');
+        });
+    } else {
+        console.log('Music element not found - music will not play');
+    }
+}
 
 // Initialize floating hearts background
 function createFloatingHearts() {
@@ -48,14 +70,25 @@ function showScreen(screenId) {
 
 // Start background music
 function startBackgroundMusic() {
+    if (!bgMusic) {
+        console.log('Cannot start music - no music element');
+        return;
+    }
+    
+    console.log('Attempting to start/resume music...');
+    bgMusic.play()
+        .then(() => console.log('Music playing'))
+        .catch(e => console.log('Music play prevented:', e));
+    
     if (!musicStarted) {
-        bgMusic.play().catch(e => console.log('Music autoplay prevented'));
         musicStarted = true;
     }
 }
 
 // Stop background music
 function stopBackgroundMusic() {
+    if (!bgMusic) return;
+    console.log('Pausing music');
     bgMusic.pause();
 }
 
@@ -114,12 +147,25 @@ function setupLandingPage() {
 
 function startMusicAndProceed() {
     // Start music with user interaction
-    bgMusic.play().catch(e => {
-        console.log('Music blocked by browser:', e);
-        // Try again after a delay
-        setTimeout(() => bgMusic.play().catch(() => {}), 100);
-    });
-    musicStarted = true;
+    console.log('Starting music...');
+    if (bgMusic) {
+        bgMusic.play()
+            .then(() => {
+                console.log('Music playing successfully');
+                musicStarted = true;
+            })
+            .catch(e => {
+                console.log('Music blocked by browser:', e);
+                // Try again after a delay
+                setTimeout(() => {
+                    bgMusic.play()
+                        .then(() => console.log('Music playing after retry'))
+                        .catch(() => console.log('Music still blocked'));
+                }, 100);
+            });
+    } else {
+        console.log('No music element available');
+    }
     proceedToVideo1();
 }
 
@@ -370,6 +416,7 @@ function celebrate() {
 
 // Initialize everything when page loads
 window.addEventListener('load', () => {
+    initMusic();
     createFloatingHearts();
     setupLandingPage();
 });
