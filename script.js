@@ -254,16 +254,26 @@ function playUnlockedVideo(index) {
         showScreen('video-holiday');
         const video = document.querySelector('#video-holiday video');
         video.play();
+        
+        // Resume music when video ends
+        video.onended = () => {
+            startBackgroundMusic();
+        };
     } else if (index === 1) {
         showScreen('video-early-years');
         const video = document.querySelector('#video-early-years video');
         video.play();
+        
+        // Resume music when video ends
+        video.onended = () => {
+            startBackgroundMusic();
+        };
     } else if (index === 2) {
         showScreen('video-question');
         const video = document.getElementById('question-video');
         video.play();
         
-        // When question video ends, show answer buttons
+        // When question video ends, show answer buttons with music
         video.onended = () => {
             startBackgroundMusic();
             showScreen('answer-screen');
