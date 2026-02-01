@@ -62,6 +62,7 @@ function stopBackgroundMusic() {
 // SMILE DETECTION
 let detector;
 let smileDetected = false;
+let detectionTimeout;
 
 async function setupSmileDetection() {
     const video = document.getElementById('webcam');
@@ -72,7 +73,7 @@ async function setupSmileDetection() {
     try {
         // Get webcam access
         const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { facingMode: 'user' } 
+            video: { facingMode: 'user', width: 640, height: 480 } 
         });
         video.srcObject = stream;
         
@@ -85,31 +86,49 @@ async function setupSmileDetection() {
             };
         });
         
-        // Load face detection model
-        status.textContent = 'Loading face detection...';
-        detector = await window.faceLandmarksDetection.createDetector(
-            window.faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
-            { runtime: 'tfjs' }
-        );
+        status.textContent = 'Loading... (or click to skip)';
         
-        status.textContent = 'Smile to continue! 😊';
+        // Add immediate click-to-skip option
+        status.style.cursor = 'pointer';
+        status.onclick = () => {
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            startBackgroundMusic();
+            proceedToVideo1();
+        };
         
-        // Detect smiles
-        detectSmile(video, ctx, status);
+        // Try to load face detection model with timeout
+        detectionTimeout = setTimeout(() => {
+            console.log('Detection timeout - enabling click to continue');
+            status.textContent = 'Click here to continue! →';
+        }, 5000);
+        
+        try {
+            detector = await window.faceLandmarksDetection.createDetector(
+                window.faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh,
+                { runtime: 'tfjs' }
+            );
+            
+            clearTimeout(detectionTimeout);
+            status.textContent = 'Smile to continue! 😊 (or click)';
+            
+            // Start detection
+            detectSmile(video, ctx, status);
+        } catch (modelError) {
+            console.error('Model loading error:', modelError);
+            clearTimeout(detectionTimeout);
+            status.textContent = 'Click here to continue! →';
+        }
         
     } catch (error) {
-        console.error('Error setting up smile detection:', error);
-        status.textContent = 'Camera access needed! Please allow camera access.';
-        
-        // Fallback: click to continue after 3 seconds
-        setTimeout(() => {
-            status.textContent = 'Click here to continue →';
-            status.style.cursor = 'pointer';
-            status.onclick = () => {
-                startBackgroundMusic();
-                proceedToVideo1();
-            };
-        }, 3000);
+        console.error('Camera error:', error);
+        status.textContent = 'Click here to continue! →';
+        status.style.cursor = 'pointer';
+        status.onclick = () => {
+            startBackgroundMusic();
+            proceedToVideo1();
+        };
     }
 }
 
@@ -117,54 +136,61 @@ async function detectSmile(video, ctx, status) {
     if (smileDetected) return;
     
     try {
-        const faces = await detector.estimateFaces(video);
+        const faces = await detector.estimateFaces(video, { flipHorizontal: false });
         
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         
         if (faces.length > 0) {
             const face = faces[0];
             
-            // Simple smile detection: check mouth corners
-            // Points 61 and 291 are mouth corners, 13 is bottom lip center
-            const leftMouth = face.keypoints[61];
-            const rightMouth = face.keypoints[291];
-            const bottomLip = face.keypoints[13];
-            
-            // Calculate smile ratio
-            const mouthWidth = Math.abs(rightMouth.x - leftMouth.x);
-            const mouthHeight = Math.abs((leftMouth.y + rightMouth.y) / 2 - bottomLip.y);
-            const smileRatio = mouthWidth / mouthHeight;
-            
-            // Draw face indicator
+            // Draw a simple face indicator
+            const box = face.box;
             ctx.strokeStyle = '#ff6b9d';
             ctx.lineWidth = 3;
+            ctx.strokeRect(box.xMin, box.yMin, box.width, box.height);
             
-            if (smileRatio > 8) { // Threshold for smile
-                status.textContent = '😊 Perfect! Loading...';
-                ctx.strokeStyle = '#4CAF50';
-                smileDetected = true;
+            // Simplified smile detection using mouth keypoints
+            if (face.keypoints && face.keypoints.length > 300) {
+                const leftMouth = face.keypoints[61];
+                const rightMouth = face.keypoints[291];
+                const topLip = face.keypoints[0];
+                const bottomLip = face.keypoints[17];
                 
-                setTimeout(() => {
-                    startBackgroundMusic();
-                    proceedToVideo1();
-                }, 500);
+                if (leftMouth && rightMouth && topLip && bottomLip) {
+                    const mouthWidth = Math.abs(rightMouth.x - leftMouth.x);
+                    const mouthHeight = Math.abs(bottomLip.y - topLip.y);
+                    
+                    // More forgiving smile threshold
+                    if (mouthWidth / mouthHeight > 6) {
+                        status.textContent = '😊 Perfect smile! Loading...';
+                        ctx.strokeStyle = '#4CAF50';
+                        ctx.strokeRect(box.xMin, box.yMin, box.width, box.height);
+                        smileDetected = true;
+                        
+                        setTimeout(() => {
+                            if (video.srcObject) {
+                                video.srcObject.getTracks().forEach(track => track.stop());
+                            }
+                            startBackgroundMusic();
+                            proceedToVideo1();
+                        }, 800);
+                        return;
+                    }
+                }
             }
         }
         
     } catch (error) {
         console.error('Detection error:', error);
+        // Don't stop trying, just continue
     }
     
-    requestAnimationFrame(() => detectSmile(video, ctx, status));
+    if (!smileDetected) {
+        requestAnimationFrame(() => detectSmile(video, ctx, status));
+    }
 }
 
 function proceedToVideo1() {
-    // Stop webcam
-    const video = document.getElementById('webcam');
-    if (video.srcObject) {
-        video.srcObject.getTracks().forEach(track => track.stop());
-    }
-    
     showScreen('video1-screen');
     const cosmicVideo = document.getElementById('cosmic-odds-video');
     stopBackgroundMusic();
