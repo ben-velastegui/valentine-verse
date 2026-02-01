@@ -32,6 +32,8 @@ Add a file called `background-music.mp3` for background music. If you don't have
 - Use any romantic/soft instrumental MP3
 - Or skip it entirely (the app will work without it)
 
+**Important:** The music file MUST be named `background-music.mp3` and be in MP3 format. Some browsers may block autoplay, but the music will start after the user clicks to begin.
+
 ## 🚀 How to Test Locally
 
 ### Option 1: Simple HTTP Server (Recommended)
